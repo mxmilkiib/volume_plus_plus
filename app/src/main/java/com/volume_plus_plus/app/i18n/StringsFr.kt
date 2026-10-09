@@ -170,6 +170,11 @@ object FrenchStrings : Strings() {
         "Le bouton PARAMÈTRES / VOIR PLUS du panneau ouvre Volume++ au lieu des " +
             "paramètres de son d'Android."
 
+    override val overlayOpenExpanded get() = "Ouvrir le panneau déplié"
+    override val overlayOpenExpandedDetail get() =
+        "Une première pression sur une touche de volume ouvre le panneau complet — chaque " +
+            "flux et un curseur par application en cours de lecture — au lieu du panneau compact."
+
     // ── tuile des Réglages rapides ──────────────────────────────────────────────────────────────
 
     override val qsTileLabel get() = "Panneau Volume++"

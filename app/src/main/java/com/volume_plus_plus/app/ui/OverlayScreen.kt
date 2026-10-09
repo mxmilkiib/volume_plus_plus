@@ -182,6 +182,7 @@ private fun OverlaySetup(
     var version by remember { mutableStateOf(OverlayVersion.current(prefs)) }
     var systemVolumePanel by remember { mutableStateOf(prefs.isSystemVolumePanelEnabled()) }
     var settingsOpensApp by remember { mutableStateOf(prefs.isSettingsOpensAppEnabled()) }
+    var openExpanded by remember { mutableStateOf(prefs.isOpenExpandedEnabled()) }
     var rememberAppVolumes by remember { mutableStateOf(prefs.isRememberAppVolumesEnabled()) }
     var mediaBoost by remember { mutableStateOf(prefs.isMediaBoostEnabled()) }
     var boostAvailable by remember {
@@ -218,6 +219,7 @@ private fun OverlaySetup(
     LifecycleResumeEffect(Unit) {
         systemVolumePanel = prefs.isSystemVolumePanelEnabled()
         settingsOpensApp = prefs.isSettingsOpensAppEnabled()
+        openExpanded = prefs.isOpenExpandedEnabled()
         rememberAppVolumes = prefs.isRememberAppVolumesEnabled()
         mediaBoost = prefs.isMediaBoostEnabled()
         // The user may have just set Shizuku or root up on the Mixing tab, which can turn a device
@@ -357,6 +359,18 @@ private fun OverlaySetup(
                 },
             )
         }
+        // Applies to every skin — the 7–8 panel expands in place rather than into a sheet, but a
+        // first press can still open it with every row already showing.
+        SettingSwitch(
+            title = s.overlayOpenExpanded,
+            subtitle = s.overlayOpenExpandedDetail,
+            checked = openExpanded,
+            enabled = styleEnabled,
+            onCheckedChange = {
+                openExpanded = it
+                prefs.setOpenExpandedEnabled(it)
+            },
+        )
         // Not tied to `styleEnabled`: the per-app levels are applied by the privileged service
         // whether or not the volume keys open our panel, so this keeps working with the system
         // panel in charge.

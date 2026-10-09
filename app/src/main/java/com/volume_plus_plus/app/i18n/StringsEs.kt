@@ -167,6 +167,11 @@ object SpanishStrings : Strings() {
         "El botón AJUSTES / VER MÁS del panel abre Volume++ en lugar de los ajustes de " +
             "sonido de Android."
 
+    override val overlayOpenExpanded get() = "Abrir el panel expandido"
+    override val overlayOpenExpandedDetail get() =
+        "La primera pulsación de una tecla de volumen abre la hoja completa — cada canal y " +
+            "un control por app en reproducción — en lugar del panel compacto."
+
     // ── mosaico de Ajustes rápidos ──────────────────────────────────────────────────────────────
 
     override val qsTileLabel get() = "Panel de Volume++"
