@@ -228,6 +228,11 @@ open class Strings {
         "A first volume-key press opens the full sheet — every stream and a slider per playing " +
             "app — instead of the compact panel."
 
+    open val overlayAppsFirst get() = "App sliders first"
+    open val overlayAppsFirstDetail get() =
+        "In the expanded sheet, sliders for playing apps sit above the Media/Ring/Alarm " +
+            "rows instead of below them."
+
     open val overlayMediaBoost get() = "Media volume booster"
     open val overlayMediaBoostDetail get() =
         "At 100%, press Volume Up twice to go louder still — up to 120%."

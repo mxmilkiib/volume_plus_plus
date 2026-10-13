@@ -176,6 +176,11 @@ object PortugueseStrings : Strings() {
         "O primeiro toque numa tecla de volume abre o painel completo — cada canal e um " +
             "controlo por app em reprodução — em vez do painel compacto."
 
+    override val overlayAppsFirst get() = "Controlos de apps primeiro"
+    override val overlayAppsFirstDetail get() =
+        "No painel expandido, os controlos das apps em reprodução ficam acima das linhas " +
+            "de canais em vez de abaixo."
+
     // ── bloco das Configurações rápidas ─────────────────────────────────────────────────────────
 
     override val qsTileLabel get() = "Painel do Volume++"

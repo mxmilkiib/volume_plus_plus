@@ -172,6 +172,11 @@ object SpanishStrings : Strings() {
         "La primera pulsación de una tecla de volumen abre la hoja completa — cada canal y " +
             "un control por app en reproducción — en lugar del panel compacto."
 
+    override val overlayAppsFirst get() = "Controles de apps primero"
+    override val overlayAppsFirstDetail get() =
+        "En la hoja expandida, los controles de las apps en reproducción van encima de las " +
+            "filas de canales en lugar de debajo."
+
     // ── mosaico de Ajustes rápidos ──────────────────────────────────────────────────────────────
 
     override val qsTileLabel get() = "Panel de Volume++"

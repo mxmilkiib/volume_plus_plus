@@ -175,6 +175,11 @@ object FrenchStrings : Strings() {
         "Une première pression sur une touche de volume ouvre le panneau complet — chaque " +
             "flux et un curseur par application en cours de lecture — au lieu du panneau compact."
 
+    override val overlayAppsFirst get() = "Curseurs d'apps en premier"
+    override val overlayAppsFirstDetail get() =
+        "Dans le panneau déplié, les curseurs des applications en cours de lecture sont " +
+            "au-dessus des lignes de flux plutôt qu'en dessous."
+
     // ── tuile des Réglages rapides ──────────────────────────────────────────────────────────────
 
     override val qsTileLabel get() = "Panneau Volume++"
