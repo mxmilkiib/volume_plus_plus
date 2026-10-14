@@ -184,6 +184,7 @@ private fun OverlaySetup(
     var settingsOpensApp by remember { mutableStateOf(prefs.isSettingsOpensAppEnabled()) }
     var openExpanded by remember { mutableStateOf(prefs.isOpenExpandedEnabled()) }
     var appsFirst by remember { mutableStateOf(prefs.isAppsFirstEnabled()) }
+    var sheetOpacity by remember { mutableStateOf(prefs.getSheetOpacity()) }
     var rememberAppVolumes by remember { mutableStateOf(prefs.isRememberAppVolumesEnabled()) }
     var mediaBoost by remember { mutableStateOf(prefs.isMediaBoostEnabled()) }
     var boostAvailable by remember {
@@ -222,6 +223,7 @@ private fun OverlaySetup(
         settingsOpensApp = prefs.isSettingsOpensAppEnabled()
         openExpanded = prefs.isOpenExpandedEnabled()
         appsFirst = prefs.isAppsFirstEnabled()
+        sheetOpacity = prefs.getSheetOpacity()
         rememberAppVolumes = prefs.isRememberAppVolumesEnabled()
         mediaBoost = prefs.isMediaBoostEnabled()
         // The user may have just set Shizuku or root up on the Mixing tab, which can turn a device
@@ -382,6 +384,23 @@ private fun OverlaySetup(
             onCheckedChange = {
                 appsFirst = it
                 prefs.setAppsFirstEnabled(it)
+            },
+        )
+        // Applies to every skin's expanded surface — the 9–15 bottom sheets share one container,
+        // and the 7–8 panel is its own sheet. Only the backdrop is faded; everything drawn on it
+        // keeps its own (opaque) colour.
+        SettingSlider(
+            title = s.overlaySheetOpacity,
+            info = s.overlaySheetOpacityInfo,
+            value = sheetOpacity,
+            valueRange = 0.1f..1f,
+            // 89 steps so one notch is exactly 0.01 — a ± press moves the readout a whole
+            // percentage point, matching the motion/haptic rows.
+            steps = 89,
+            enabled = styleEnabled,
+            onValueChange = {
+                sheetOpacity = it
+                prefs.setSheetOpacity(it)
             },
         )
         // Not tied to `styleEnabled`: the per-app levels are applied by the privileged service
