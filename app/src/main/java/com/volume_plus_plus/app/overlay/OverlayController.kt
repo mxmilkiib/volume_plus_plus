@@ -1499,6 +1499,9 @@ class OverlayController(
         ringerIcon = null
         ringerButtons = null
         sheetRingerButton = null
+        // The chooser overlays the sheet's FrameLayout root, not the column the populates clear —
+        // detach it from that root explicitly.
+        sheetRingerChooser?.let { (it.parent as? ViewGroup)?.removeView(it) }
         sheetRingerChooser = null
         genericRingSlider = null
         alarmsOnlyRow = null
@@ -1507,8 +1510,10 @@ class OverlayController(
         // and the collapsed panels (which show none) then correctly leave it stopped.
         stopAppSync()
         when {
-            isRichPanel() && expanded && isAndroid15Sheet() -> populateAndroid15Sheet(container as LinearLayout)
-            isRichPanel() && expanded -> populate911Expanded(container as LinearLayout)
+            isRichPanel() && expanded && isAndroid15Sheet() ->
+                populateAndroid15Sheet((container as FrameLayout).getChildAt(0) as LinearLayout)
+            isRichPanel() && expanded ->
+                populate911Expanded((container as FrameLayout).getChildAt(0) as LinearLayout)
             isRichPanel() -> populate911Collapsed(container as LinearLayout)
             else -> populateGeneric(container as FrameLayout)
         }
@@ -2131,11 +2136,21 @@ class OverlayController(
 
     // ── Android 9–11: expanded bottom "Sound" sheet ───────────────────────────────────────────────
 
-    private fun sheetContainer() = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        val corner = dp(20).toFloat()
-        background = roundedBg(style.containerColor, corner, corner, 0f, 0f)
-        setPadding(0, dp(10), 0, dp(16))
+    // The sheet's root is a FrameLayout holding the visual column, so the ringer chooser can float
+    // over the footer as an overlay — inside the column it would take layout space and shift the
+    // sliders every time it opened.
+    private fun sheetContainer() = FrameLayout(context).apply {
+        addView(
+            LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                val corner = dp(20).toFloat()
+                background = roundedBg(style.containerColor, corner, corner, 0f, 0f)
+                setPadding(0, dp(10), 0, dp(16))
+            },
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
     }
 
     private fun populate911Expanded(container: LinearLayout) {
@@ -2220,12 +2235,9 @@ class OverlayController(
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
 
-        sheetRingerChooser = makeSheetRingerChooser()
-        container.addView(
-            sheetRingerChooser,
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
-        )
-        container.addView(makeFooter())
+        val footer911 = makeFooter()
+        container.addView(footer911)
+        addSheetRingerOverlay(container, footer911)
     }
 
     /**
@@ -2391,18 +2403,20 @@ class OverlayController(
         }
 
     /**
-     * The expanded sheet's ringer chooser: vibrate, silent, ring as a vertical column of square
-     *  buttons that slides up over the footer's top edge — the same unfolding stock's collapsed
-     *  pill drawer does, with ring landing nearest the trigger and the sheet's own rounded
-     *  background growing up to enclose it. Reuses [ringerButtons], so [refreshRingerButtons]
-     *  keeps the selected-mode disc in sync — with the chooser open every mode shows, and when
-     *  it's shut the column is GONE regardless of what the buttons' own visibility says.
+     * The expanded sheet's ringer chooser: vibrate, silent, ring as a horizontal capsule that
+     *  floats over the rows just above the footer. Reuses [ringerButtons], so
+     *  [refreshRingerButtons] keeps the selected-mode disc in sync — with the chooser open every
+     *  mode shows, and when it's shut the capsule is GONE regardless of what the buttons' own
+     *  visibility says.
      */
     private fun makeSheetRingerChooser(): View {
-        val column = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
             visibility = View.GONE
+            // Its own surface — it floats over the slider rows, so it can't borrow the sheet's.
+            background = roundedBg(style.secondaryContainerColor, dp(28).toFloat())
+            val p = dp(6); setPadding(p, p, p, p)
         }
         val size = dp(44)
         val modeButtons = LinkedHashMap<Int, ImageView>()
@@ -2422,13 +2436,36 @@ class OverlayController(
                 }
             }
             modeButtons[mode] = btn
-            column.addView(
+            row.addView(
                 btn,
-                LinearLayout.LayoutParams(size, size).apply { topMargin = dp(2); bottomMargin = dp(2) },
+                LinearLayout.LayoutParams(size, size).apply {
+                    marginStart = dp(4); marginEnd = dp(4)
+                },
             )
         }
         ringerButtons = modeButtons
-        return column
+        return row
+    }
+
+    /** Attach the chooser to the sheet's FrameLayout root as an overlay floating just above the
+     *  footer's top edge — the footer isn't measured yet at build time, so its height lands as the
+     *  chooser's bottom margin once layout runs. */
+    private fun addSheetRingerOverlay(sheet: LinearLayout, footer: View) {
+        sheetRingerChooser = makeSheetRingerChooser()
+        (sheet.parent as? ViewGroup)?.addView(
+            sheetRingerChooser,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
+            ),
+        )
+        footer.post {
+            (sheetRingerChooser?.layoutParams as? FrameLayout.LayoutParams)?.let {
+                it.bottomMargin = footer.height + dp(16)
+                sheetRingerChooser?.requestLayout()
+            }
+        }
     }
 
     /** Retint the footer trigger to the current mode and slide the chooser in or out of the
@@ -2653,12 +2690,9 @@ class OverlayController(
             cappedScroll(rows),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
-        sheetRingerChooser = makeSheetRingerChooser()
-        container.addView(
-            sheetRingerChooser,
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
-        )
-        container.addView(makeFooter())
+        val footer15 = makeFooter()
+        container.addView(footer15)
+        addSheetRingerOverlay(container, footer15)
     }
 
     /**
