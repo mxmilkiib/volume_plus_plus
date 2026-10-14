@@ -480,6 +480,12 @@ open class Strings {
     /** The same card while a call is in progress, where it names the call's output instead. */
     open val panelCallingOn get() = "Calling on"
     open val panelConnectADevice get() = "Connect a device"
+
+    /** Media card (output picker): the now-playing header, the remote session's volume row and
+     *  the big tile buttons under it. */
+    open val panelCastVolume get() = "Cast volume"
+    open val panelDeviceSettings get() = "Device settings"
+    open val panelLiveCaption get() = "Live caption"
     open val outputThisPhone get() = "This phone"
     open val outputWiredHeadphones get() = "Wired headphones"
     open val outputUsbHeadphones get() = "USB headphones"
