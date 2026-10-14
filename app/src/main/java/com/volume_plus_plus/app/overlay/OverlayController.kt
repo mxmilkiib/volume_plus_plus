@@ -273,6 +273,10 @@ class OverlayController(
      *  held here as well as in the builder's closure so [refreshRingerViews] can reach them when a
      *  privileged silent request lands after the tap that started it. */
     private var ringerButtons: Map<Int, ImageView>? = null
+    /** The expanded sheets' footer ringer trigger and the slide-up mode chooser it reveals —
+     *  both null on the collapsed cards, which carry their own ringer controls. */
+    private var sheetRingerButton: ImageView? = null
+    private var sheetRingerChooser: View? = null
     private var loadJob: Job? = null
 
     /** The Android 15 media-output picker modal, added over the (dimmed) Sound sheet without tearing
@@ -753,6 +757,8 @@ class OverlayController(
         boostBar = null
         ringerIcon = null
         ringerButtons = null
+        sheetRingerButton = null
+        sheetRingerChooser = null
         // A fresh panel starts from the device's real ringer mode again.
         requestedRingerMode = null
         pendingSilent = false
@@ -1492,6 +1498,8 @@ class OverlayController(
         legacyIconRefresh = null
         ringerIcon = null
         ringerButtons = null
+        sheetRingerButton = null
+        sheetRingerChooser = null
         genericRingSlider = null
         alarmsOnlyRow = null
         captionButton = null
@@ -2212,6 +2220,11 @@ class OverlayController(
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
 
+        sheetRingerChooser = makeSheetRingerChooser()
+        container.addView(
+            sheetRingerChooser,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+        )
         container.addView(makeFooter())
     }
 
@@ -2339,24 +2352,99 @@ class OverlayController(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(24), dp(22), dp(24), dp(20))
         }
-        // Live Caption sits centred between the two buttons — a spacer either side puts it
-        // mid-sheet rather than tucked into a corner.
+        // Live Caption and the ringer trigger sit centred between the two buttons — a spacer
+        // either side keeps them mid-sheet rather than tucked into a corner. The chooser slides
+        // up just above the footer; stock keeps that control in the collapsed pill only.
         val caption = makeCaptionButton()
+        val ringer = makeSheetRingerButton().apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
         if (isModernSheet()) {
             // Android 13–14: rounded (pill) buttons — SETTINGS outlined, DONE filled tonal.
             footer.addView(outlinedPillButton(strings.panelSettings) { openSoundSettings() })
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
-            caption?.let { it.setPadding(dp(12), dp(8), dp(12), dp(8)); footer.addView(it) }
+            caption?.let { it.setPadding(dp(8), dp(8), dp(8), dp(8)); footer.addView(it) }
+            footer.addView(ringer)
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             footer.addView(filledPillButton(strings.panelDone) { dismissSheet() })
         } else {
             footer.addView(textButton(strings.panelSeeMore) { openSoundSettings() })
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
-            caption?.let { it.setPadding(dp(12), dp(8), dp(12), dp(8)); footer.addView(it) }
+            caption?.let { it.setPadding(dp(8), dp(8), dp(8), dp(8)); footer.addView(it) }
+            footer.addView(ringer)
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             footer.addView(textButton(strings.panelDoneCaps) { dismissSheet() })
         }
         return footer
+    }
+
+    /** The footer's ringer trigger: the current mode's icon; a tap slides the chooser open or
+     *  shut above it. */
+    private fun makeSheetRingerButton(): ImageView =
+        ImageView(context).apply {
+            setOnClickListener {
+                if (isEditor()) return@setOnClickListener // visual-only preview
+                armAutoHide() // interacting keeps the panel alive
+                ringerMenuOpen = !ringerMenuOpen
+                refreshRingerViews()
+            }
+            sheetRingerButton = this
+            setImageDrawable(tintedIcon(ringerIconRes(), style.iconTint))
+        }
+
+    /**
+     * The expanded sheet's ringer chooser: vibrate, silent, ring as three centred buttons that
+     *  slide up over the footer's top edge. Reuses [ringerButtons], so [refreshRingerButtons]
+     *  keeps the selected-mode disc in sync — with the chooser open every mode shows, and when
+     *  it's shut the row is GONE regardless of what the buttons' own visibility says.
+     */
+    private fun makeSheetRingerChooser(): View {
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+        }
+        val size = dp(44)
+        val modeButtons = LinkedHashMap<Int, ImageView>()
+        intArrayOf(
+            AudioManager.RINGER_MODE_VIBRATE,
+            AudioManager.RINGER_MODE_SILENT,
+            AudioManager.RINGER_MODE_NORMAL,
+        ).forEach { mode ->
+            val btn = ImageView(context).apply {
+                val p = dp(10); setPadding(p, p, p, p)
+                setOnClickListener {
+                    if (isEditor()) return@setOnClickListener // visual-only preview
+                    armAutoHide() // interacting keeps the panel alive
+                    ringerMenuOpen = false
+                    setRinger(mode) // may route to DND-access settings and hide()
+                    refreshRingerViews()
+                }
+            }
+            modeButtons[mode] = btn
+            row.addView(
+                btn,
+                LinearLayout.LayoutParams(size, size).apply {
+                    marginStart = dp(12); marginEnd = dp(12)
+                },
+            )
+        }
+        ringerButtons = modeButtons
+        return row
+    }
+
+    /** Retint the footer trigger to the current mode and slide the chooser in or out of the
+     *  space above the footer as [ringerMenuOpen] flips. */
+    private fun refreshSheetRinger() {
+        sheetRingerButton?.setImageDrawable(tintedIcon(ringerIconRes(), style.iconTint))
+        val chooser = sheetRingerChooser ?: return
+        if (ringerMenuOpen && chooser.visibility != View.VISIBLE) {
+            chooser.visibility = View.VISIBLE
+            chooser.alpha = 0f
+            chooser.translationY = dp(16).toFloat()
+            chooser.animate().alpha(1f).translationY(0f).setDuration(150).start()
+        } else if (!ringerMenuOpen && chooser.visibility == View.VISIBLE) {
+            chooser.animate().cancel()
+            chooser.visibility = View.GONE
+        }
     }
 
     /** DONE on the expanded sheet: inert in an editor (the preview is visual-only — leave via the
@@ -2563,6 +2651,11 @@ class OverlayController(
 
         container.addView(
             cappedScroll(rows),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+        )
+        sheetRingerChooser = makeSheetRingerChooser()
+        container.addView(
+            sheetRingerChooser,
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
         container.addView(makeFooter())
@@ -3339,6 +3432,7 @@ class OverlayController(
     private fun refreshRingerViews() {
         ringerIcon?.setImageDrawable(tintedIcon(ringerIconRes(), style.modeIconColor ?: style.iconTint))
         ringerButtons?.let { refreshRingerButtons(it) }
+        refreshSheetRinger()
     }
 
     private fun cycleRinger() {
