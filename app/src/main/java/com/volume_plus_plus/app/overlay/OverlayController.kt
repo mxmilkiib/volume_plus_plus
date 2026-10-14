@@ -2303,8 +2303,11 @@ class OverlayController(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             visibility = View.GONE
-            // Its own surface — it floats over the slider rows, so it can't borrow the sheet's.
-            background = roundedBg(style.secondaryContainerColor, dp(28).toFloat())
+            // The sheet's own surface plus a track-coloured hairline — it floats over the slider
+            // rows, so it needs the outline to read as its own element without leaving the theme.
+            background = roundedBg(style.containerColor, dp(28).toFloat()).apply {
+                setStroke(maxOf(1, dp(1)), style.trackColor)
+            }
             val p = dp(6); setPadding(p, p, p, p)
         }
         val size = dp(44)
