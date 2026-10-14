@@ -2275,15 +2275,17 @@ class OverlayController(
         }
 
     /**
-     * The expanded sheet's ringer chooser: vibrate, silent, ring as three centred buttons that
-     *  slide up over the footer's top edge. Reuses [ringerButtons], so [refreshRingerButtons]
+     * The expanded sheet's ringer chooser: vibrate, silent, ring as a vertical column of square
+     *  buttons that slides up over the footer's top edge — the same unfolding stock's collapsed
+     *  pill drawer does, with ring landing nearest the trigger and the sheet's own rounded
+     *  background growing up to enclose it. Reuses [ringerButtons], so [refreshRingerButtons]
      *  keeps the selected-mode disc in sync — with the chooser open every mode shows, and when
-     *  it's shut the row is GONE regardless of what the buttons' own visibility says.
+     *  it's shut the column is GONE regardless of what the buttons' own visibility says.
      */
     private fun makeSheetRingerChooser(): View {
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             visibility = View.GONE
         }
         val size = dp(44)
@@ -2304,15 +2306,13 @@ class OverlayController(
                 }
             }
             modeButtons[mode] = btn
-            row.addView(
+            column.addView(
                 btn,
-                LinearLayout.LayoutParams(size, size).apply {
-                    marginStart = dp(12); marginEnd = dp(12)
-                },
+                LinearLayout.LayoutParams(size, size).apply { topMargin = dp(2); bottomMargin = dp(2) },
             )
         }
         ringerButtons = modeButtons
-        return row
+        return column
     }
 
     /** Retint the footer trigger to the current mode and slide the chooser in or out of the
