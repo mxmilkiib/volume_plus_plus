@@ -112,4 +112,12 @@ interface IUserService {
      * Returns true on success.
      */
     boolean setSessionVolume(in Bundle session, int level) = 12;
+
+    /**
+     * The MAC address of the current Bluetooth media output, or "" when the output is anything
+     * else. Read here because AudioDeviceInfo.getAddress hides the address from callers without
+     * BLUETOOTH permissions — the app's own UID gets back "". The media card's Device settings
+     * tile feeds it to the Settings app's device-detail screen.
+     */
+    String getBluetoothOutputAddress() = 13;
 }
