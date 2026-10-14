@@ -2254,18 +2254,23 @@ class OverlayController(
         // The ringer trigger sits centred between the two buttons, with the chooser sliding up
         // just above the footer — stock keeps this control in the collapsed pill only, so the
         // sheet borrows it.
+        // A little start margin keeps it clear of whatever sits beside it in the centre slot
+        // (Live Caption, when that's around).
         val ringer = makeSheetRingerButton().apply { setPadding(dp(12), dp(8), dp(12), dp(8)) }
+        val ringerParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { marginStart = dp(10) }
         if (isModernSheet()) {
             // Android 13–14: rounded (pill) buttons — SETTINGS outlined, DONE filled tonal.
             footer.addView(outlinedPillButton(strings.panelSettings) { openSoundSettings() })
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
-            footer.addView(ringer)
+            footer.addView(ringer, ringerParams)
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             footer.addView(filledPillButton(strings.panelDone) { dismissSheet() })
         } else {
             footer.addView(textButton(strings.panelSeeMore) { openSoundSettings() })
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
-            footer.addView(ringer)
+            footer.addView(ringer, ringerParams)
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             footer.addView(textButton(strings.panelDoneCaps) { dismissSheet() })
         }
