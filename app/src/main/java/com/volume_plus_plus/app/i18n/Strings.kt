@@ -441,7 +441,7 @@ open class Strings {
     // reference for a translation: matching it is what makes the skins look right.
 
     /** Expanded-sheet title on Android 13+. */
-    open val panelTitleSoundVibration get() = "Sound & vibration"
+    open val panelTitleSoundVibration get() = "Sound and vibration"
 
     /** Expanded-sheet title on Android 9 and 10. */
     open val panelTitleVolume get() = "Volume"
