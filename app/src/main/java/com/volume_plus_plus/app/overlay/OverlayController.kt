@@ -3062,7 +3062,7 @@ class OverlayController(
         footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
         // Re-tag the DONE pill with the picker's own identity (overriding filledPillButton's default
         // DONE_BG tag) so a tap selects the Media-output DONE, not the Expanded sheet's.
-        footer.addView(filledPillButton(strings.panelDoneCaps) { dismissPicker() }.tagColor(EditableColor.OUTPUT_DONE))
+        footer.addView(filledPillButton(strings.panelDone) { dismissPicker() }.tagColor(EditableColor.OUTPUT_DONE))
         card.addView(footer, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
         // Fill the now-playing header and any cast-volume row once the session list lands; editors
