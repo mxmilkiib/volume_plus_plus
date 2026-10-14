@@ -2365,23 +2365,27 @@ class OverlayController(
             setPadding(dp(24), dp(22), dp(24), dp(20))
         }
         // Live Caption and the ringer trigger sit centred between the two buttons — a spacer
-        // either side keeps them mid-sheet rather than tucked into a corner. The chooser slides
-        // up just above the footer; stock keeps that control in the collapsed pill only.
+        // either side keeps them mid-sheet rather than tucked into a corner, and the trigger's
+        // start margin keeps it clear of the caption button. The chooser slides up just above the
+        // footer; stock keeps that control in the collapsed pill only.
         val caption = makeCaptionButton()
-        val ringer = makeSheetRingerButton().apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
+        val ringer = makeSheetRingerButton().apply { setPadding(dp(12), dp(8), dp(12), dp(8)) }
+        val ringerParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { marginStart = dp(10) }
         if (isModernSheet()) {
             // Android 13–14: rounded (pill) buttons — SETTINGS outlined, DONE filled tonal.
             footer.addView(outlinedPillButton(strings.panelSettings) { openSoundSettings() })
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             caption?.let { it.setPadding(dp(8), dp(8), dp(8), dp(8)); footer.addView(it) }
-            footer.addView(ringer)
+            footer.addView(ringer, ringerParams)
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             footer.addView(filledPillButton(strings.panelDone) { dismissSheet() })
         } else {
             footer.addView(textButton(strings.panelSeeMore) { openSoundSettings() })
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             caption?.let { it.setPadding(dp(8), dp(8), dp(8), dp(8)); footer.addView(it) }
-            footer.addView(ringer)
+            footer.addView(ringer, ringerParams)
             footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
             footer.addView(textButton(strings.panelDoneCaps) { dismissSheet() })
         }
