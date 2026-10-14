@@ -795,6 +795,19 @@ object PrivilegedManager {
             }
         }
 
+    /** The current Bluetooth output's MAC, or "" when media isn't on a BT device. The shell UID
+     *  sees the real address; the app's own UID gets "" from AudioDeviceInfo without Bluetooth
+     *  permissions. */
+    suspend fun getBluetoothOutputAddress(): String =
+        withContext(Dispatchers.IO) {
+            val svc = service ?: return@withContext ""
+            try {
+                svc.bluetoothOutputAddress ?: ""
+            } catch (e: RemoteException) {
+                ""
+            }
+        }
+
     /**
      * Whether any process for [packageName] is currently alive — used to tell a still-open app
      * (screen off, backgrounded, paused) from one the user closed or force-stopped. Defaults to

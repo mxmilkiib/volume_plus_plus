@@ -20,6 +20,7 @@ import android.app.NotificationManager
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
@@ -2588,6 +2589,19 @@ class OverlayController(
         hide()
     }
 
+    /** The media card's Sound & vibration goes to the system screen unconditionally — the
+     *  settings-opens-app pref only re-points the sheet's SETTINGS button, and a button labelled
+     *  "Sound & vibration" opening the app itself would just sit there. */
+    private fun openSystemSoundSettings() {
+        if (isEditor()) return
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+        hide()
+    }
+
     private fun ringerIconRes(mode: Int = curRingerMode()): Int {
         // Android 9–11 drew the ringer states as outlined glyphs (hollow bell, slashed hollow
         // bell, compact vibrate) — identical across all three versions; the modern skins keep the
@@ -3187,7 +3201,7 @@ class OverlayController(
             pickerTile(
                 tintedIcon(R.drawable.ic_settings_gear, pickerColors.icon ?: content),
                 strings.panelDeviceSettings, connectSurface, content,
-            ) { openConnectedDevices() },
+            ) { openDeviceSettings() },
             LinearLayout.LayoutParams(0, dp(64), 1f),
         )
         if (captionsSupported()) {
@@ -3215,7 +3229,7 @@ class OverlayController(
             setPadding(0, dp(14), 0, 0)
         }
         // Sound & vibration sits bottom-left like stock's phone-settings button; DONE keeps the end.
-        footer.addView(textButton(strings.panelTitleSoundVibration) { openSoundSettings() })
+        footer.addView(textButton(strings.panelTitleSoundVibration) { openSystemSoundSettings() })
         footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
         // Re-tag the DONE pill with the picker's own identity (overriding filledPillButton's default
         // DONE_BG tag) so a tap selects the Media-output DONE, not the Expanded sheet's.
@@ -3416,6 +3430,31 @@ class OverlayController(
             .withEndAction { (overlay.parent as? ViewGroup)?.removeView(overlay) }
             .start()
         armAutoHide()
+    }
+
+    /** The media card's Device settings tile: the connected device's own detail page, like
+     *  stock — or the Connected devices dashboard when the output isn't a Bluetooth device
+     *  ("This phone" and wired outputs have no detail page to show). */
+    private fun openDeviceSettings() {
+        if (isEditor()) return // inert preview
+        scope.launch {
+            val address = PrivilegedManager.getBluetoothOutputAddress()
+            if (address.isNotEmpty()) {
+                val opened = runCatching {
+                    context.startActivity(
+                        Intent("com.android.settings.BLUETOOTH_DEVICE_DETAIL_SETTINGS")
+                            .putExtra(
+                                // Same contract SystemUI's device rows use.
+                                ":settings:show_fragment_args",
+                                Bundle().apply { putString("device_address", address) },
+                            )
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }.isSuccess
+                if (opened) { hide(); return@launch }
+            }
+            openConnectedDevices()
+        }
     }
 
     private fun openConnectedDevices() {

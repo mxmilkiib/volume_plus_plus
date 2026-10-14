@@ -2,6 +2,7 @@ package com.volume_plus_plus.app.service
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.audiofx.LoudnessEnhancer
@@ -282,6 +283,20 @@ class UserService() : IUserService.Stub() {
         }
     }
 
+    /** The current media output's MAC when it's a Bluetooth device, else "" — the detail page the
+     *  media card's Device settings tile opens is keyed on it. */
+    override fun getBluetoothOutputAddress(): String {
+        val ctx = context ?: return ""
+        return try {
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                .firstOrNull { it.type in BT_OUTPUT_TYPES }
+                ?.address ?: ""
+        } catch (e: Throwable) {
+            ""
+        }
+    }
+
     private fun releaseEnhancer() {
         runCatching { enhancer?.release() }
         enhancer = null
@@ -306,6 +321,14 @@ class UserService() : IUserService.Stub() {
     private companion object {
         /** AudioPlaybackConfiguration.PLAYER_STATE_STARTED — the player is actively running. */
         const val PLAYER_STATE_STARTED = 2
+
+        /** Output device types whose address is a Bluetooth MAC — what Device settings opens. */
+        val BT_OUTPUT_TYPES = intArrayOf(
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_BLE_HEADSET,
+            AudioDeviceInfo.TYPE_HEARING_AID,
+        )
 
         /** Ceiling on the loudness boost (mB). +6 dB is the app's maximum; this is the hard stop
          *  in the privileged process, so a bad caller can't drive the output arbitrarily loud. */
