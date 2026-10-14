@@ -1434,7 +1434,9 @@ class OverlayController(
         return FrameLayout(context).apply {
             val pad = dp(style.containerPaddingDp)
             setPadding(pad, pad, pad, pad)
-            background = roundedBg(style.containerColor, dp(style.containerCornerDp).toFloat())
+            // The 7–8 panel has no collapsed form — its one surface is the expanded sheet, so it
+            // carries the same opacity setting.
+            background = roundedBg(sheetSurfaceColor(), dp(style.containerCornerDp).toFloat())
             addView(
                 content,
                 FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT),
@@ -2013,12 +2015,17 @@ class OverlayController(
         LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             .apply { gravity = Gravity.CENTER_HORIZONTAL }
 
+    /** The sheet's backdrop colour with the "sheet opacity" setting applied. Only the surface goes
+     *  translucent — [style]'s colours stay untouched, so icon tints and child cards drawn from
+     *  them keep full opacity. */
+    private fun sheetSurfaceColor() = fade(style.containerColor, prefs.getSheetOpacity())
+
     // ── Android 9–11: expanded bottom "Sound" sheet ───────────────────────────────────────────────
 
     private fun sheetContainer() = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         val corner = dp(20).toFloat()
-        background = roundedBg(style.containerColor, corner, corner, 0f, 0f)
+        background = roundedBg(sheetSurfaceColor(), corner, corner, 0f, 0f)
         setPadding(0, dp(10), 0, dp(16))
     }
 

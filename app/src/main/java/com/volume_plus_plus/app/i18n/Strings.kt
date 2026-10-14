@@ -223,6 +223,13 @@ open class Strings {
         "The panel's SETTINGS / SEE MORE button opens Volume++ instead of Android's sound " +
             "settings."
 
+    open val overlaySheetOpacity get() = "Sheet opacity"
+    open val overlaySheetOpacityInfo get() =
+        "How solid the expanded sheet's background is. Below 100% the sheet goes translucent, " +
+            "letting whatever is behind it show through.\n\nOnly the backdrop is faded - the " +
+            "sliders, icons and buttons on it stay fully opaque. The per-style colour editor can " +
+            "still give the background its own colour and alpha; this slider multiplies on top."
+
     open val overlayMediaBoost get() = "Media volume booster"
     open val overlayMediaBoostDetail get() =
         "At 100%, press Volume Up twice to go louder still — up to 120%."
