@@ -174,6 +174,10 @@ object PrivilegedManager {
      */
     private const val PERMISSION_TIMEOUT_MS = 20_000L
 
+    /** Settling delay before re-binding after the privileged process dies under us — long enough
+     *  for a mass process teardown (e.g. an app update) to finish before the respawn attempt. */
+    private const val REBIND_DELAY_MS = 1_500L
+
     private val _setup = MutableStateFlow(Setup())
     val setup: StateFlow<Setup> = _setup.asStateFlow()
 
@@ -185,6 +189,7 @@ object PrivilegedManager {
     /** Set while a [Shizuku.bindUserService] call is outstanding, so refreshes don't stack binds. */
     private var binding = false
     private var timeoutJob: Job? = null
+    private var rebindJob: Job? = null
 
     /** Latched when a bind attempt gives up, so the checklist can offer a retry instead of spinning. */
     private var connectFailed = false
@@ -250,6 +255,8 @@ object PrivilegedManager {
     fun destroy() {
         cancelTimeout()
         cancelPermissionTimeout()
+        rebindJob?.cancel()
+        rebindJob = null
     }
 
     /**
@@ -519,6 +526,8 @@ object PrivilegedManager {
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             cancelTimeout()
+            rebindJob?.cancel()
+            rebindJob = null
             binding = false
             if (binder != null && binder.pingBinder()) {
                 service = IUserService.Stub.asInterface(binder)
@@ -533,6 +542,17 @@ object PrivilegedManager {
             // The privileged process went away. Don't sit on READY with a dead binder — every call
             // through it would silently do nothing.
             bindFailed()
+            // Then get a fresh one back on a short delay: a mid-life death (app update, manual
+            // kill, LMK) otherwise leaves every privileged feature silently dead until something
+            // happens to force a rebind, since [connectFailed] blocks plain refreshes. Shizuku
+            // route only — a dead root shell could re-prompt for su. One shot: if this rebind
+            // fails, the usual latching applies.
+            if (backend != Backend.SHIZUKU) return
+            rebindJob?.cancel()
+            rebindJob = scope.launch {
+                delay(REBIND_DELAY_MS)
+                if (service == null) refresh(force = true)
+            }
         }
     }
 
