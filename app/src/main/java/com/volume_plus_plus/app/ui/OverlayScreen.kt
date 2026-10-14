@@ -185,6 +185,7 @@ private fun OverlaySetup(
     var openExpanded by remember { mutableStateOf(prefs.isOpenExpandedEnabled()) }
     var appsFirst by remember { mutableStateOf(prefs.isAppsFirstEnabled()) }
     var sheetOpacity by remember { mutableStateOf(prefs.getSheetOpacity()) }
+    var sheetWidth by remember { mutableStateOf(prefs.getSheetWidth()) }
     var rememberAppVolumes by remember { mutableStateOf(prefs.isRememberAppVolumesEnabled()) }
     var mediaBoost by remember { mutableStateOf(prefs.isMediaBoostEnabled()) }
     var boostAvailable by remember {
@@ -224,6 +225,7 @@ private fun OverlaySetup(
         openExpanded = prefs.isOpenExpandedEnabled()
         appsFirst = prefs.isAppsFirstEnabled()
         sheetOpacity = prefs.getSheetOpacity()
+        sheetWidth = prefs.getSheetWidth()
         rememberAppVolumes = prefs.isRememberAppVolumesEnabled()
         mediaBoost = prefs.isMediaBoostEnabled()
         // The user may have just set Shizuku or root up on the Mixing tab, which can turn a device
@@ -401,6 +403,23 @@ private fun OverlaySetup(
             onValueChange = {
                 sheetOpacity = it
                 prefs.setSheetOpacity(it)
+            },
+        )
+        // Applies to every expanded surface — the 9–15 bottom sheets and the 7–8 top panel alike.
+        // 50% floor keeps the sheet usable: any narrower and the footer starts colliding with
+        // itself.
+        SettingSlider(
+            title = s.overlaySheetWidth,
+            info = s.overlaySheetWidthInfo,
+            value = sheetWidth,
+            valueRange = 0.5f..1f,
+            // 49 steps so one notch is exactly 0.01 — a ± press moves the readout a whole
+            // percentage point, matching the motion/haptic rows.
+            steps = 49,
+            enabled = styleEnabled,
+            onValueChange = {
+                sheetWidth = it
+                prefs.setSheetWidth(it)
             },
         )
         // Not tied to `styleEnabled`: the per-app levels are applied by the privileged service

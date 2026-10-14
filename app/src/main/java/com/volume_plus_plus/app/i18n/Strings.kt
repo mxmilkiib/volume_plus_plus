@@ -240,6 +240,13 @@ open class Strings {
             "sliders, icons and buttons on it stay fully opaque. The per-style colour editor can " +
             "still give the background its own colour and alpha; this slider multiplies on top."
 
+    open val overlaySheetWidth get() = "Sheet width"
+    open val overlaySheetWidthInfo get() =
+        "How wide the expanded sheet is, as a share of the display. Below 100% the sheet narrows " +
+            "and stays centred along its edge - handy on wide screens where a full-width sheet " +
+            "spreads the sliders thin.\n\nIt applies to the expanded sheet of every style, " +
+            "including the Android 7-8 top panel."
+
     open val overlayMediaBoost get() = "Media volume booster"
     open val overlayMediaBoostDetail get() =
         "At 100%, press Volume Up twice to go louder still — up to 120%."
