@@ -1254,6 +1254,16 @@ class OverlayController(
         }
     }
 
+    /** The expanded sheet's width in px: the display width scaled by the "sheet width" setting,
+     *  or MATCH_PARENT when the setting is at its default so the sheet spans edge to edge like
+     *  stock. The same value drives the real overlay, the editor's live-edit window and the
+     *  embedded preview, so all three agree on the sheet's size. */
+    private fun sheetWidthPx(): Int {
+        val scale = prefs.getSheetWidth()
+        if (scale >= 1f) return WindowManager.LayoutParams.MATCH_PARENT
+        return (context.resources.displayMetrics.widthPixels * scale).roundToInt()
+    }
+
     /** Combined height (px) of the status + navigation bars — the vertical space a *confined* window
      *  (the expanded bottom sheet) loses to the system bars. Used to keep the sheet's title/footer
      *  from being pushed under a bar (or off-screen) on tall sheets. Falls back to a sane estimate on
@@ -1292,7 +1302,8 @@ class OverlayController(
         val dx = dp(off.dxDp)
         val dy = dp(off.dyDp)
         val edge = dp(style.edgeMarginDp)
-        // The sheets want the full display width; the compact panels wrap to their content.
+        // The sheets span the display width scaled by the "sheet width" setting; the compact
+        // panels wrap to their content.
         val expandedSheet = isRichPanel() && expanded
         val fullWidth = expandedSheet ||
             (style.placement == Placement.TOP && style.stretch)
@@ -1308,8 +1319,7 @@ class OverlayController(
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         return WindowManager.LayoutParams(
-            if (fullWidth) WindowManager.LayoutParams.MATCH_PARENT
-            else WindowManager.LayoutParams.WRAP_CONTENT,
+            if (fullWidth) sheetWidthPx() else WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType(),
             flags,
@@ -1317,8 +1327,8 @@ class OverlayController(
         ).apply {
             when {
                 isRichPanel() && expanded -> {
-                    // Bottom sheet: docked to the bottom edge, shifted by the offset.
-                    gravity = Gravity.BOTTOM
+                    // Bottom sheet: centred on the bottom edge, shifted by the offset.
+                    gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                     x = dx
                     y = -dy
                 }
@@ -1360,9 +1370,10 @@ class OverlayController(
         val edge = dp(style.edgeMarginDp)
         when {
             isRichPanel() && expanded -> {
-                // Full-width bottom sheet: shift it right by dx (keeping full width) and down by dy.
-                lp.width = FrameLayout.LayoutParams.MATCH_PARENT
-                lp.gravity = Gravity.BOTTOM
+                // Bottom sheet: narrowed/centred by the "sheet width" setting, shifted right by dx
+                // and down by dy.
+                lp.width = sheetWidthPx()
+                lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                 lp.leftMargin = dx
                 lp.rightMargin = -dx
                 lp.bottomMargin = -dy
@@ -1375,7 +1386,7 @@ class OverlayController(
             }
 
             style.placement == Placement.TOP -> {
-                if (style.stretch) lp.width = FrameLayout.LayoutParams.MATCH_PARENT
+                if (style.stretch) lp.width = sheetWidthPx()
                 lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                 lp.leftMargin = dx
                 lp.topMargin = edge + dy

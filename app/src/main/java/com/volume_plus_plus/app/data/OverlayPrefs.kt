@@ -103,6 +103,16 @@ class OverlayPrefs(context: Context) {
         prefs.edit().putBoolean(KEY_REMEMBER_APP_VOLUMES, enabled).apply()
     }
 
+    /**
+     * Fraction of the display width the expanded sheet occupies (0.5–1). Below 1 the sheet narrows
+     * and stays centred on the bottom edge; at 1 it spans the screen edge to edge like stock.
+     */
+    fun getSheetWidth(): Float = prefs.getFloat(KEY_SHEET_WIDTH, 1f)
+
+    fun setSheetWidth(width: Float) {
+        prefs.edit().putFloat(KEY_SHEET_WIDTH, width.coerceIn(MIN_SHEET_WIDTH, 1f)).apply()
+    }
+
     /** Multiplier for the slider's follow speed while a held key is still stepping. */
     fun getHoldFollowScale(): Float = prefs.getFloat(KEY_HOLD_FOLLOW_SCALE, 1f)
 
@@ -140,10 +150,12 @@ class OverlayPrefs(context: Context) {
         const val KEY_SETTINGS_OPENS_APP = "settings_opens_app"
         const val KEY_REMEMBER_APP_VOLUMES = "remember_app_volumes"
         const val KEY_MEDIA_BOOST = "media_boost"
+        const val KEY_SHEET_WIDTH = "sheet_width"
         const val KEY_HOLD_FOLLOW_SCALE = "hold_follow_scale"
         const val KEY_HOLD_SETTLE_SCALE = "hold_settle_scale"
         const val KEY_HOLD_STEP_HAPTICS = "hold_step_haptics"
         const val KEY_HOLD_STEP_HAPTIC_INTENSITY = "hold_step_haptic_intensity"
+        const val MIN_SHEET_WIDTH = 0.5f
         const val MIN_HOLD_SCALE = 0.5f
         const val MAX_HOLD_SCALE = 2.0f
         const val MIN_HAPTIC_INTENSITY = 0.5f
