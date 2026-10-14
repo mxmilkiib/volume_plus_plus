@@ -11,6 +11,8 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.PointF
 import android.graphics.Typeface
+import android.graphics.Outline
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
@@ -27,6 +29,7 @@ import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -264,6 +267,8 @@ class OverlayController(
     private var boostBar: BoostBar? = null
     /** The Live Caption toggle currently on screen, retinted in place as its state flips. */
     private var captionButton: ImageView? = null
+    /** The caption tile's icon inside the media-output card — repainted alongside [captionButton]. */
+    private var pickerCaptionIcon: ImageView? = null
     private val captionManager by lazy { context.getSystemService(CaptioningManager::class.java) }
     /** The Android 9–11 ringer button currently on screen, so a mode change can retint it in place
      *  instead of rebuilding the whole panel (which cancels the app-sync load and drops frames, and
@@ -573,13 +578,15 @@ class OverlayController(
         }
     }
 
-    /** Repaints the caption button for the current state: an accent disc behind the glyph while
+    private fun captionsOn() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        captionManager?.isSystemAudioCaptioningEnabled == true
+
+    /** Repaints the caption controls for the current state: an accent disc behind the glyph while
      *  Live Caption is on — the accent tint alone read as nearly unchanged against the icon tint. */
     private fun refreshCaptionButton() {
-        val btn = captionButton ?: return
-        val on = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            captionManager?.isSystemAudioCaptioningEnabled == true
-        btn.setImageDrawable(captionIcon(on))
+        val on = captionsOn()
+        captionButton?.setImageDrawable(captionIcon(on))
+        pickerCaptionIcon?.setImageDrawable(captionIcon(on))
     }
 
     /** The caption glyph, on an accent disc while Live Caption is on and bare otherwise. Both
@@ -1490,6 +1497,7 @@ class OverlayController(
         genericRingSlider = null
         alarmsOnlyRow = null
         captionButton = null
+        pickerCaptionIcon = null
         // Drop any previous app box/timer; the renderers that show apps re-arm it via startAppSync,
         // and the collapsed panels (which show none) then correctly leave it stopped.
         stopAppSync()
@@ -2924,6 +2932,21 @@ class OverlayController(
             isClickable = true
         }.tagColor(EditableColor.OUTPUT_CARD)
 
+        // The now-playing header — the stock media card's top half. Filled async once the
+        // privileged session query lands; stays hidden when nothing's playing or no backend is
+        // bound, so a session-less picker looks exactly as before.
+        val mediaHeader = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+        }
+        card.addView(
+            mediaHeader,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(12) },
+        )
+
         lateinit var phone: VolumeSlider
         phone = makeSlider(
             icon = tintedIcon(R.drawable.ic_speaker), glyph = null, label = currentOutputLabel(),
@@ -2957,6 +2980,16 @@ class OverlayController(
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)).apply { bottomMargin = dp(10) },
         )
 
+        // The remote ("cast") session's own volume — populated only when the active session reports
+        // a remote absolute control; the phone slider above still drives the local media stream.
+        val remoteBox = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        card.addView(
+            remoteBox,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
         val connectSurface = pickerColors.secondary
             ?: if (dark) OUTPUT_PICKER_REF_CONNECT_DARK else OUTPUT_PICKER_REF_CONNECT
         val connect = LinearLayout(context).apply {
@@ -2985,16 +3018,181 @@ class OverlayController(
         })
         card.addView(connect, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
+        // The big action tiles under the connect row, like stock's media card: Device settings
+        // opens Connected devices, Live caption flips the same toggle the sheet footer carries
+        // (absent entirely where the device can't caption).
+        val content = pickerColors.text ?: refContent
+        val tiles = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(10), 0, 0)
+        }
+        tiles.addView(
+            pickerTile(
+                tintedIcon(R.drawable.ic_settings_gear, pickerColors.icon ?: content),
+                strings.panelDeviceSettings, connectSurface, content,
+            ) { openConnectedDevices() },
+            LinearLayout.LayoutParams(0, dp(64), 1f),
+        )
+        if (captionsSupported()) {
+            tiles.addView(
+                pickerTile(
+                    null, strings.panelLiveCaption, connectSurface, content,
+                    // The icon slot doubles as the live state indicator — the accent disc the
+                    // footer button wears while captions are on.
+                    iconSlot = {
+                        ImageView(context).also { pickerCaptionIcon = it }
+                            .apply { setImageDrawable(captionIcon(captionsOn())) }
+                    },
+                ) { toggleCaptions() },
+                LinearLayout.LayoutParams(0, dp(64), 1f).apply { marginStart = dp(10) },
+            )
+        }
+        card.addView(
+            tiles,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+        )
+
         val footer = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(14), 0, 0)
         }
+        // Sound & vibration sits bottom-left like stock's phone-settings button; DONE keeps the end.
+        footer.addView(textButton(strings.panelTitleSoundVibration) { openSoundSettings() })
+        footer.addView(View(context), LinearLayout.LayoutParams(0, dp(1), 1f))
         // Re-tag the DONE pill with the picker's own identity (overriding filledPillButton's default
         // DONE_BG tag) so a tap selects the Media-output DONE, not the Expanded sheet's.
         footer.addView(filledPillButton(strings.panelDoneCaps) { dismissPicker() }.tagColor(EditableColor.OUTPUT_DONE))
         card.addView(footer, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+
+        // Fill the now-playing header and any cast-volume row once the session list lands; editors
+        // skip it — a preview stays static.
+        if (!isEditor()) {
+            scope.launch {
+                val session = PrivilegedManager.getMediaSessions().firstOrNull()
+                session?.let {
+                    fillMediaCard(it, mediaHeader, remoteBox, content)
+                }
+            }
+        }
         return card
+    }
+
+    /** One of the media card's big tiles: an icon over a centred label on a rounded surface. */
+    private fun pickerTile(
+        icon: Drawable?,
+        label: String,
+        surface: Int,
+        content: Int,
+        iconSlot: (() -> ImageView)? = null,
+        onClick: () -> Unit,
+    ): View = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        background = roundedBg(surface, dp(16).toFloat())
+        isClickable = true
+        setOnClickListener {
+            if (isEditor()) return@setOnClickListener // visual-only preview
+            armAutoHide() // interacting keeps the panel alive
+            onClick()
+        }
+        addView(
+            (iconSlot?.invoke() ?: ImageView(context).apply { setImageDrawable(icon) }),
+            LinearLayout.LayoutParams(dp(22), dp(22)),
+        )
+        addView(
+            TextView(context).apply {
+                text = label
+                setTextColor(content)
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(4) },
+        )
+    }
+
+    /** Fill the media card's top: album art (or the app's icon), what's playing and on what
+     *  device, plus the cast-volume row when the session is a remote one. */
+    private fun fillMediaCard(
+        session: PrivilegedManager.MediaSessionInfo,
+        header: LinearLayout,
+        remoteBox: LinearLayout,
+        content: Int,
+    ) {
+        val art = ImageView(context).apply {
+            clipToOutline = true
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, dp(12).toFloat())
+                }
+            }
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setImageDrawable(
+                session.art?.let { BitmapDrawable(context.resources, it) }
+                    ?: runCatching { context.packageManager.getApplicationIcon(session.pkg) }
+                        .getOrNull(),
+            )
+        }
+        header.addView(
+            art,
+            LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(14) },
+        )
+        val appLabel = runCatching {
+            context.packageManager.getApplicationInfo(session.pkg, 0)
+                .loadLabel(context.packageManager).toString()
+        }.getOrNull() ?: session.pkg
+        val col = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(TextView(context).apply {
+            text = session.title ?: appLabel
+            setTextColor(content)
+            textSize = 15f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        col.addView(TextView(context).apply {
+            text = listOfNotNull(
+                session.artist, appLabel.takeIf { session.title != null }, currentOutputLabel(),
+            ).joinToString(" · ")
+            setTextColor(fade(content, 0.7f))
+            textSize = 12.5f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        header.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        header.visibility = View.VISIBLE
+
+        if (session.remote && session.maxVolume > 0) {
+            val slider = makeSlider(
+                icon = tintedIcon(R.drawable.ic_speaker), glyph = null, label = strings.panelCastVolume,
+                chevron = ChevronDir.NONE, onChevron = {},
+                orientation = SliderOrientation.HORIZONTAL, fill = true, reserveTrailing = false,
+                render = SliderRender.PILL_LABEL, percentWhileDragging = true,
+                showDot = isAndroid16(),
+                squareFill = true,
+                mutedIcon = tintedIcon(R.drawable.ic_speaker_off),
+                minNonZeroFillExtraDp = 0f,
+                fadeLabelWhileDragging = false,
+                pickerTrackColor = style.trackColor,
+                pickerFillColor = style.fillColor,
+                pickerContentColor = style.textColor,
+            ) { level ->
+                scope.launch {
+                    PrivilegedManager.setSessionVolume(
+                        session, (level * session.maxVolume).roundToInt(),
+                    )
+                }
+            }
+            slider.level = session.volume.toFloat() / session.maxVolume
+            remoteBox.addView(
+                slider,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(56),
+                ).apply { bottomMargin = dp(10) },
+            )
+        }
     }
 
     /** User-facing "close the picker" (DONE / tap-outside). On the real overlay it collapses back to
@@ -3052,6 +3250,7 @@ class OverlayController(
         // Hand volume-key control back to the sheet's media slider, refreshed to the current level.
         mediaSlider = savedSheetMediaSlider?.also { it.level = streamLevel(AudioManager.STREAM_MUSIC) }
         savedSheetMediaSlider = null
+        pickerCaptionIcon = null // the tile's icon dies with the card
         val dim = overlay.getChildAt(0)
         val card = overlay.getChildAt(1)
         dim.animate().alpha(0f).setDuration(PICKER_OUT_MS).start()
@@ -3196,6 +3395,19 @@ class OverlayController(
             it.setPadding(dp(9), dp(4), dp(9), dp(12))
             card.addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
+        // The media-output trigger — the stock pill's bottom icon, opening the media card over
+        // the current panel.
+        card.addView(
+            ImageView(context).apply {
+                setImageDrawable(tintedIcon(R.drawable.ic_phone_device, style.iconTint))
+                setPadding(dp(9), dp(4), dp(9), dp(12))
+                setOnClickListener {
+                    if (isEditor()) return@setOnClickListener // visual-only preview
+                    openOutputPicker()
+                }
+            },
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+        )
 
         if (!callMode) {
             // Above everything, so the boost reads as sitting on top of the media capsule below it. The
