@@ -14,7 +14,7 @@ import com.volume_plus_plus.app.overlay.defaultSkin
  */
 /** Where the expanded sheet docks. [STOCK] follows the skin — bottom for the 9–15 sheets, top for
  *  Android 7–8; the rest pin every expanded surface to that edge or the screen centre. */
-enum class SheetPosition { STOCK, BOTTOM, CENTRE, TOP }
+enum class SheetPosition { STOCK, BOTTOM, BOTTOM_LEFT, BOTTOM_RIGHT, CENTRE, TOP }
 
 class OverlayPrefs(context: Context) {
 

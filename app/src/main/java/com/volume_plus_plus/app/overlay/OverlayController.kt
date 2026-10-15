@@ -1378,6 +1378,22 @@ class OverlayController(
         else -> p
     }
 
+    /** The gravity the sheet docks with: its horizontal half (start/end/centre) plus its
+     *  vertical half (top/bottom/centre). */
+    private fun sheetGravity(): Int {
+        val h = when (sheetDock()) {
+            SheetPosition.BOTTOM_LEFT -> Gravity.START
+            SheetPosition.BOTTOM_RIGHT -> Gravity.END
+            else -> Gravity.CENTER_HORIZONTAL
+        }
+        val v = when (sheetDock()) {
+            SheetPosition.TOP -> Gravity.TOP
+            SheetPosition.CENTRE -> Gravity.CENTER_VERTICAL
+            else -> Gravity.BOTTOM
+        }
+        return h or v
+    }
+
     /** The expanded sheet's width in px: the display width scaled by the "sheet width" setting,
      *  or MATCH_PARENT when the setting is at its default so the sheet spans edge to edge like
      *  stock. The same value drives the real overlay, the editor's live-edit window and the
@@ -1451,14 +1467,14 @@ class OverlayController(
         ).apply {
             when {
                 isRichPanel() && expanded -> {
-                    // Sheet docked to the chosen edge (stock: bottom), shifted by the offset.
-                    gravity = when (sheetDock()) {
-                        SheetPosition.TOP -> Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                        SheetPosition.CENTRE -> Gravity.CENTER
-                        else -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                    // Sheet docked to the chosen spot (stock: bottom-centre), shifted by the offset.
+                    // x reads off the anchor edge, so an end-docked sheet needs dx inverted.
+                    gravity = sheetGravity()
+                    x = if (sheetDock() == SheetPosition.BOTTOM_RIGHT) -dx else dx
+                    y = when (sheetDock()) {
+                        SheetPosition.TOP, SheetPosition.CENTRE -> dy
+                        else -> -dy
                     }
-                    x = dx
-                    y = if (sheetDock() == SheetPosition.BOTTOM) -dy else dy
                 }
                 isRichPanel() -> {
                     // Right-edge collapsed control, vertically centred.
@@ -1468,12 +1484,8 @@ class OverlayController(
                 }
                 style.placement == Placement.TOP -> {
                     // Android 7–8 sheet (stock: top).
-                    gravity = when (sheetDock()) {
-                        SheetPosition.BOTTOM -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                        SheetPosition.CENTRE -> Gravity.CENTER
-                        else -> Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                    }
-                    x = dx
+                    gravity = sheetGravity()
+                    x = if (sheetDock() == SheetPosition.BOTTOM_RIGHT) -dx else dx
                     y = when (sheetDock()) {
                         SheetPosition.TOP -> edge + dy
                         SheetPosition.CENTRE -> dy
@@ -1506,18 +1518,16 @@ class OverlayController(
         val edge = dp(style.edgeMarginDp)
         when {
             isRichPanel() && expanded -> {
-                // Sheet docked to the chosen edge (stock: bottom), narrowed/centred by the "sheet
-                // width" setting, then shifted by dx/dy.
+                // Sheet docked to the chosen spot (stock: bottom-centre), narrowed by the "sheet
+                // width" setting, then shifted by dx/dy. Setting both side margins keeps dx
+                // working the same under START, CENTRE_HORIZONTAL and END anchoring.
                 lp.width = sheetWidthPx()
-                lp.gravity = when (sheetDock()) {
-                    SheetPosition.TOP -> Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                    SheetPosition.CENTRE -> Gravity.CENTER
-                    else -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                }
+                lp.gravity = sheetGravity()
                 lp.leftMargin = dx
                 lp.rightMargin = -dx
-                if (sheetDock() == SheetPosition.BOTTOM) lp.bottomMargin = -dy
-                else lp.topMargin = dy
+                if (sheetDock() == SheetPosition.TOP || sheetDock() == SheetPosition.CENTRE)
+                    lp.topMargin = dy
+                else lp.bottomMargin = -dy
             }
 
             isRichPanel() -> {
@@ -1528,16 +1538,13 @@ class OverlayController(
 
             style.placement == Placement.TOP -> {
                 if (style.stretch) lp.width = sheetWidthPx()
-                lp.gravity = when (sheetDock()) {
-                    SheetPosition.BOTTOM -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    SheetPosition.CENTRE -> Gravity.CENTER
-                    else -> Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                }
+                lp.gravity = sheetGravity()
                 lp.leftMargin = dx
+                lp.rightMargin = -dx
                 when (sheetDock()) {
-                    SheetPosition.BOTTOM -> lp.bottomMargin = edge - dy
+                    SheetPosition.TOP -> lp.topMargin = edge + dy
                     SheetPosition.CENTRE -> lp.topMargin = dy
-                    else -> lp.topMargin = edge + dy
+                    else -> lp.bottomMargin = edge - dy
                 }
             }
 

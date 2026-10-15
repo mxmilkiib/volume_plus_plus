@@ -432,6 +432,8 @@ private fun OverlaySetup(
             options = listOf(
                 SheetPosition.STOCK to s.sheetPositionStock,
                 SheetPosition.BOTTOM to s.sheetPositionBottom,
+                SheetPosition.BOTTOM_LEFT to s.sheetPositionBottomLeft,
+                SheetPosition.BOTTOM_RIGHT to s.sheetPositionBottomRight,
                 SheetPosition.CENTRE to s.sheetPositionCentre,
                 SheetPosition.TOP to s.sheetPositionTop,
             ),
