@@ -247,6 +247,15 @@ open class Strings {
             "spreads the sliders thin.\n\nIt applies to the expanded sheet of every style, " +
             "including the Android 7-8 top panel."
 
+    open val overlaySheetPosition get() = "Sheet position"
+    open val overlaySheetPositionInfo get() =
+        "Which screen edge the expanded sheet docks to. Stock follows the style's own edge - " +
+            "bottom for Android 9-15, top for Android 7-8."
+    open val sheetPositionStock get() = "Stock edge"
+    open val sheetPositionBottom get() = "Bottom"
+    open val sheetPositionCentre get() = "Centre"
+    open val sheetPositionTop get() = "Top"
+
     open val overlayMediaBoost get() = "Media volume booster"
     open val overlayMediaBoostDetail get() =
         "At 100%, press Volume Up twice to go louder still — up to 120%."

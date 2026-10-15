@@ -66,6 +66,7 @@ import com.volume_plus_plus.app.R
 import com.volume_plus_plus.app.config.AppConfig
 import com.volume_plus_plus.app.data.OverlayCustomizationPrefs
 import com.volume_plus_plus.app.data.OverlayPrefs
+import com.volume_plus_plus.app.data.SheetPosition
 import com.volume_plus_plus.app.i18n.strings
 import com.volume_plus_plus.app.overlay.AppVolumeController
 import com.volume_plus_plus.app.overlay.EditOrientation
@@ -186,6 +187,7 @@ private fun OverlaySetup(
     var appsFirst by remember { mutableStateOf(prefs.isAppsFirstEnabled()) }
     var sheetOpacity by remember { mutableStateOf(prefs.getSheetOpacity()) }
     var sheetWidth by remember { mutableStateOf(prefs.getSheetWidth()) }
+    var sheetPosition by remember { mutableStateOf(prefs.getSheetPosition()) }
     var rememberAppVolumes by remember { mutableStateOf(prefs.isRememberAppVolumesEnabled()) }
     var mediaBoost by remember { mutableStateOf(prefs.isMediaBoostEnabled()) }
     var boostAvailable by remember {
@@ -226,6 +228,7 @@ private fun OverlaySetup(
         appsFirst = prefs.isAppsFirstEnabled()
         sheetOpacity = prefs.getSheetOpacity()
         sheetWidth = prefs.getSheetWidth()
+        sheetPosition = prefs.getSheetPosition()
         rememberAppVolumes = prefs.isRememberAppVolumesEnabled()
         mediaBoost = prefs.isMediaBoostEnabled()
         // The user may have just set Shizuku or root up on the Mixing tab, which can turn a device
@@ -420,6 +423,23 @@ private fun OverlaySetup(
             onValueChange = {
                 sheetWidth = it
                 prefs.setSheetWidth(it)
+            },
+        )
+        // Which edge the expanded sheet docks to; Stock leaves each style on its own edge.
+        SettingChoice(
+            title = s.overlaySheetPosition,
+            info = s.overlaySheetPositionInfo,
+            options = listOf(
+                SheetPosition.STOCK to s.sheetPositionStock,
+                SheetPosition.BOTTOM to s.sheetPositionBottom,
+                SheetPosition.CENTRE to s.sheetPositionCentre,
+                SheetPosition.TOP to s.sheetPositionTop,
+            ),
+            selected = sheetPosition,
+            enabled = styleEnabled,
+            onSelect = {
+                sheetPosition = it
+                prefs.setSheetPosition(it)
             },
         )
         // Not tied to `styleEnabled`: the per-app levels are applied by the privileged service
@@ -710,6 +730,69 @@ private fun SettingSwitch(
                 onCheckedChange = onCheckedChange,
                 enabled = enabled,
             )
+        }
+    }
+}
+
+/**
+ * A titled radio-card: [title] on top ([info] adds the ⓘ explainer), then one radio row per
+ * [options] entry. Same card/list styling as [SettingSwitch] so it sits naturally in the list.
+ */
+@Composable
+private fun <T> SettingChoice(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    info: String? = null,
+    enabled: Boolean = true,
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 14.dp, top = 10.dp, bottom = 4.dp, end = 8.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (enabled) Color.Unspecified else disabledContentColor(),
+                    modifier = Modifier.weight(1f),
+                )
+                if (info != null) InfoButton(title = title, body = info)
+            }
+            options.forEach { (value, label) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = value == selected,
+                            enabled = enabled,
+                            onClick = { onSelect(value) },
+                        )
+                        .padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+                ) {
+                    RadioButton(
+                        selected = value == selected,
+                        enabled = enabled,
+                        onClick = { onSelect(value) },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (enabled) Color.Unspecified else disabledContentColor(),
+                    )
+                }
+            }
         }
     }
 }

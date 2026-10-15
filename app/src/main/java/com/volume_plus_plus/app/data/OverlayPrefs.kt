@@ -12,6 +12,10 @@ import com.volume_plus_plus.app.overlay.defaultSkin
  * version ([defaultSkin]) until the user picks one. Read by both the settings UI and the overlay
  * so a change applies the next time the panel shows.
  */
+/** Where the expanded sheet docks. [STOCK] follows the skin — bottom for the 9–15 sheets, top for
+ *  Android 7–8; the rest pin every expanded surface to that edge or the screen centre. */
+enum class SheetPosition { STOCK, BOTTOM, CENTRE, TOP }
+
 class OverlayPrefs(context: Context) {
 
     private val prefs = context.applicationContext
@@ -145,6 +149,17 @@ class OverlayPrefs(context: Context) {
         prefs.edit().putFloat(KEY_SHEET_WIDTH, width.coerceIn(MIN_SHEET_WIDTH, 1f)).apply()
     }
 
+    /** Which edge the expanded sheet docks to (or the screen centre). STOCK by default: the skins
+     *  reproduce the stock panels, and those dock to their own fixed edge. */
+    fun getSheetPosition(): SheetPosition {
+        val name = prefs.getString(KEY_SHEET_POSITION, null) ?: return SheetPosition.STOCK
+        return runCatching { SheetPosition.valueOf(name) }.getOrDefault(SheetPosition.STOCK)
+    }
+
+    fun setSheetPosition(position: SheetPosition) {
+        prefs.edit().putString(KEY_SHEET_POSITION, position.name).apply()
+    }
+
     /** Multiplier for the slider's follow speed while a held key is still stepping. */
     fun getHoldFollowScale(): Float = prefs.getFloat(KEY_HOLD_FOLLOW_SCALE, 1f)
 
@@ -186,6 +201,7 @@ class OverlayPrefs(context: Context) {
         const val KEY_MEDIA_BOOST = "media_boost"
         const val KEY_SHEET_OPACITY = "sheet_opacity"
         const val KEY_SHEET_WIDTH = "sheet_width"
+        const val KEY_SHEET_POSITION = "sheet_position"
         const val KEY_HOLD_FOLLOW_SCALE = "hold_follow_scale"
         const val KEY_HOLD_SETTLE_SCALE = "hold_settle_scale"
         const val KEY_HOLD_STEP_HAPTICS = "hold_step_haptics"
