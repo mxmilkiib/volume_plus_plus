@@ -232,10 +232,13 @@ open class Strings {
 
     open val overlaySheetPosition get() = "Sheet position"
     open val overlaySheetPositionInfo get() =
-        "Which screen edge the expanded sheet docks to. Stock follows the style's own edge - " +
-            "bottom for Android 9-15, top for Android 7-8."
+        "Where the expanded sheet docks. Stock follows the style's own edge - bottom-centre for " +
+            "Android 9-15, top for Android 7-8. The corner options put it in a bottom corner, " +
+            "which pairs well with a reduced sheet width."
     open val sheetPositionStock get() = "Stock edge"
     open val sheetPositionBottom get() = "Bottom"
+    open val sheetPositionBottomLeft get() = "Bottom left"
+    open val sheetPositionBottomRight get() = "Bottom right"
     open val sheetPositionCentre get() = "Centre"
     open val sheetPositionTop get() = "Top"
 
